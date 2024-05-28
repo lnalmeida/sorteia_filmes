@@ -1,0 +1,72 @@
+﻿@page "/"
+
+@using System.Net.Http.Headers;
+@using System.Text.Json.Serialization
+
+<PageTitle>Sorteio de Filmes</PageTitle>
+
+<div class="card d-flex justify-content-center h-100">
+    <div class="card-header text-center p-4">
+        <h1 class="p-3 fw-bold" style="color: #0b5ed7;">Sorteio de Filmes</h1> 
+    </div>
+    <div class="card-body d-flex align-items-center flex-column gap-5">
+        <h2 class="card-title p-5 mt-5 fw-bold" style="color: #0b5ed7;">@_nomeFilme</h2>
+        <a href="#" @onclick="SorteiNomeFilme" class="btn btn-primary w-50 p-3 mb-5">Sorteio</a>
+    </div>
+</div>
+
+@code
+{
+    public static string _nomeFilme;
+    private static readonly HttpClient _httpClient = new HttpClient();
+    
+    public class FilmeResponse
+    {
+        [JsonPropertyName("iso_3166_1")]
+        public string CountryCode { get; set; }
+    
+        [JsonPropertyName("title")]
+        public string Title { get; set; }
+    
+        [JsonPropertyName("type")]
+        public string Type { get; set; }
+    }
+    
+    public class FilmeCollectionResponse
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+    
+        [JsonPropertyName("titles")]
+        public FilmeResponse[] Titles { get; set; }
+    }
+
+    public async Task<string> SorteiNomeFilme()
+    {
+        string apiKey = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwMDc3YjI5ZWJjMDA4ZDE0MGQxNmUwMmU4MmFkNWI3NCIsInN1YiI6IjY2NTUyYmY0Yzc0YWZlNzMyM2JiNjBjNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.RyZWWjDH253Zeco-8Q5VWBIV0EBqAMDZJTtleqo3Rp0";
+        string authHeader = $"Bearer {apiKey}";
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("accept", "application/json");
+        _httpClient.DefaultRequestHeaders.Add("Authorization", authHeader);
+        var ramdom = new Random();
+        FilmeCollectionResponse responseContent = null!;
+        string title = null!;
+        while (string.IsNullOrEmpty(title))
+        {
+            var ramdomFilmeId = ramdom.Next(1, 5001);
+            var requestUri = new Uri($"https://api.themoviedb.org/3/movie/{ramdomFilmeId}/alternative_titles?country=br");
+            var response = await _httpClient.GetAsync(requestUri);
+            if (response.IsSuccessStatusCode)
+            {
+                responseContent = await response.Content.ReadFromJsonAsync<FilmeCollectionResponse>();
+                if (responseContent?.Titles != null && responseContent.Titles.Length > 0)
+                {
+                    title = responseContent.Titles[0].Title;
+                }
+            }
+        }
+        _nomeFilme = title;
+        return _nomeFilme;
+    }
+    
+}
